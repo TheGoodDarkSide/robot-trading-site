@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.2.8",
-    "next": "^15.5.0",
+    "next": "15.5.9",
     "qr": "^0.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
