@@ -1,115 +1,120 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { useState, useEffect, useRef } from 'react';
+import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
 export default function Home() {
+  const [account, setAccount] = useState(null);
+  const [data, setData] = useState([]);
+  const canvasRef = useRef(null);
+  const particles = useRef([]);
+
+  // Générer des données mock pour le graphique
+  useEffect(() => {
+    const mockData = [];
+    for (let i = 0; i < 20; i++) {
+      mockData.push({ date: `J-${20 - i}`, gain: Math.random() * 100, perte: Math.random() * 50 });
+    }
+    setData(mockData);
+  }, []);
+
+  // Animation canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Créer des particules
+    particles.current = Array.from({ length: 50 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: Math.random() * 0.5 - 0.25,
+      vy: Math.random() * 0.5 - 0.25,
+      radius: Math.random() * 3 + 2
+    }));
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.current.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,68,204,0.7)';
+        ctx.fill();
+      });
+      requestAnimationFrame(animate);
+    };
+    animate();
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const connectWallet = async () => {
+    if (typeof window.ethereum !== 'undefined') {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        setAccount(accounts[0]);
+      } catch (err) {
+        if (err.code === 4001) alert('Connexion annulée par l’utilisateur.');
+        else console.error(err);
+      }
+    } else {
+      alert('Wallet non détecté. Installez MetaMask ou un wallet compatible.');
+    }
+  };
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20`}
-    >
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              pages/index.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div style={{ position: 'relative', minHeight: '100vh', fontFamily: 'Arial, sans-serif', overflow: 'hidden' }}>
+      <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, zIndex: 0 }} />
+
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '50px', color: '#002244' }}>
+        <h1 style={{ fontSize: '48px', marginBottom: '30px', color: '#0044cc' }}>🤖 Robot Trading</h1>
+
+        <div style={{ marginBottom: '40px' }}>
+          {account ? (
+            <p>Wallet connecté : {account}</p>
+          ) : (
+            <button
+              onClick={connectWallet}
+              style={{
+                padding: '12px 25px',
+                fontSize: '16px',
+                color: '#fff',
+                backgroundColor: '#0044cc',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(0,68,204,0.5)',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 6px 25px rgba(0,68,204,0.7)'}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,68,204,0.5)'}
+            >
+              Connect Wallet
+            </button>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div style={{ backgroundColor: '#ffffffcc', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 20px rgba(0,68,204,0.2)' }}>
+          <LineChart width={800} height={400} data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+            <Line type="monotone" dataKey="gain" stroke="#0044cc" strokeWidth={3} dot={{ r: 4, stroke: '#0044cc', strokeWidth: 2, fill: '#fff' }} />
+            <Line type="monotone" dataKey="perte" stroke="#00aaff" strokeWidth={3} dot={{ r: 4, stroke: '#00aaff', strokeWidth: 2, fill: '#fff' }} />
+            <CartesianGrid stroke="#e6f0ff" strokeDasharray="3 3" />
+            <XAxis dataKey="date" stroke="#002244" />
+            <YAxis stroke="#002244" />
+            <Tooltip contentStyle={{ backgroundColor: '#f5f8ff', border: '1px solid #0044cc', color: '#002244' }} />
+          </LineChart>
+        </div>
+      </div>
     </div>
   );
 }
